@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Apr 29 13:13:34 2022
-
-@author: pnaddaf
-"""
-
 # Copyright (c) Facebook, Inc. and its affiliates.
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
@@ -309,6 +301,7 @@ def evaluate_mrr(pos_val_pred, neg_val_pred, pos_test_pred, neg_test_pred):
 
 
 def evaluate_auc(val_pred, val_true, test_pred, test_true):
+    
     pred = np.array(test_pred)
     pred[pred>.5] = 1
     pred[pred < .5] = 0
@@ -341,9 +334,7 @@ def evaluate_auc(val_pred, val_true, test_pred, test_true):
     valid_auc = roc_auc_score(val_true, val_pred)
     test_auc = roc_auc_score(test_true, test_pred)
     print("VAL AUC:", str(valid_auc), "TEST AUC:", str(test_auc))
-    
-    
-    
+
     results = {}
     results['AUC'] = (valid_auc, test_auc)
     # results['Precision'] = (precision_val, precision_test)
@@ -351,13 +342,12 @@ def evaluate_auc(val_pred, val_true, test_pred, test_true):
     # results['AP'] = (ap_val, ap_test)
     # results['ACC'] = (acc_val, acc_test)
 
-
     return results
         
 
 # Data settings
 parser = argparse.ArgumentParser(description='OGBL (SEAL)')
-parser.add_argument('--dataset', type=str, default='LLGF_cora')
+parser.add_argument('--dataset', type=str, default='LLGF_ACM')
 parser.add_argument('--fast_split', action='store_true', 
                     help="for large custom datasets (not OGB), do a fast data split")
 # GNN settings
@@ -372,7 +362,7 @@ parser.add_argument('--ratio_per_hop', type=float, default=1.0)
 parser.add_argument('--max_nodes_per_hop', type=int, default=None)
 parser.add_argument('--node_label', type=str, default='drnl', 
                     help="which specific labeling trick to use")
-parser.add_argument('--use_feature', action='store_true', default=True,
+parser.add_argument('--use_feature', action='store_true', 
                     help="whether to use raw node features as GNN input")
 parser.add_argument('--use_edge_weight', action='store_true', 
                     help="whether to consider edge weight in GNN")
@@ -405,7 +395,7 @@ parser.add_argument('--keep_old', action='store_true',
                     help="do not overwrite old files in the save directory")
 parser.add_argument('--continue_from', type=int, default=None, 
                     help="from which epoch's checkpoint to continue training")
-parser.add_argument('--only_test', default = True, 
+parser.add_argument('--only_test', default= True, 
                     help="only test without training")
 parser.add_argument('--test_multiple_models', action='store_true', 
                     help="test multiple models together")
@@ -498,7 +488,7 @@ elif args.dataset.startswith('LLGF'):
         split_edge['test']['edge_neg'] = data.test_neg_edge_index.t()
         return split_edge
 
-    path  = osp.join('datasets_LLGF/', args.dataset)
+    path  = osp.join('/localhome/pnaddaf/Desktop/parmis/SEAl_miror/datasets_LLGF', args.dataset)
     # read the data with same split of LLFG
     train_pos, val_pos,test_pos,val_neg,test_neg,x = datasetsSnapShot(path)
     #all edges in graph
@@ -549,9 +539,13 @@ elif args.eval_metric == 'mrr':
 elif args.eval_metric == 'auc':
     loggers = {
         'AUC': Logger(args.runs, args),
+        # 'Precision': Logger(args.runs, args),
+        # 'Recall': Logger(args.runs, args),
+        # 'AP': Logger(args.runs, args),
+        # 'ACC': Logger(args.runs, args),
     }
     
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 if args.use_heuristic:
     # Test link prediction heuristics.
@@ -718,19 +712,8 @@ for run in range(args.runs):
         if args.model == 'DGCNN':
             print(f'SortPooling k is set to {model.k}', file=f)
 
-    start_epoch = 1
-    if args.continue_from is not None:
-        model.load_state_dict(
-            torch.load(os.path.join(args.res_dir, 
-                'run{}_model_checkpoint{}.pth'.format(run+1, args.continue_from)))
-        )
-        optimizer.load_state_dict(
-            torch.load(os.path.join(args.res_dir, 
-                'run{}_optimizer_checkpoint{}.pth'.format(run+1, args.continue_from)))
-        )
-        start_epoch = args.continue_from + 1
-        args.epochs -= args.continue_from
-    
+
+
     if args.only_test:
         PATH = '/localhome/pnaddaf/Desktop/parmis/SEAl_miror/model.pth'
         checkpoint = torch.load(PATH)
@@ -745,9 +728,6 @@ for run in range(args.runs):
             print(f'Run: {run + 1:02d}, '
                   f'Valid: {100 * valid_res:.2f}%, '
                   f'Test: {100 * test_res:.2f}%')
-        # pdb.set_trace()
-        # exit()
-
     if args.test_multiple_models:
         model_paths = [
         ] # enter all your pretrained .pth model paths here
@@ -774,7 +754,15 @@ for run in range(args.runs):
                 with open(log_file, 'a') as f:
                     print(key, file=f)
                     print(to_print, file=f)
-        pdb.set_trace()
-        exit()
+
+
+for key in loggers.keys():
+    print(key)
+    loggers[key].print_statistics()
+    with open(log_file, 'a') as f:
+        print(key, file=f)
+        loggers[key].print_statistics(f=f)
+print(f'Total number of parameters is {total_params}')
+print(f'Results are saved in {args.res_dir}')
 
 

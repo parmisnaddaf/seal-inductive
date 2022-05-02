@@ -318,7 +318,7 @@ def evaluate_auc(val_pred, val_true, test_pred, test_true):
 
 # Data settings
 parser = argparse.ArgumentParser(description='OGBL (SEAL)')
-parser.add_argument('--dataset', type=str, default='LLGF_cora')
+parser.add_argument('--dataset', type=str, default='LLGF_FB')
 parser.add_argument('--fast_split', action='store_true',
                     help="for large custom datasets (not OGB), do a fast data split")
 # GNN settings

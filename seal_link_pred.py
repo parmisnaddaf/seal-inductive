@@ -301,13 +301,15 @@ def evaluate_mrr(pos_val_pred, neg_val_pred, pos_test_pred, neg_test_pred):
 
 
 def evaluate_auc(val_pred, val_true, test_pred, test_true):
-    pred = np.array(test_pred)
+    
+    
+    pred = np.array(torch.sigmoid(test_pred))
     pred[pred>.5] = 1
     pred[pred < .5] = 0
     pred_test = pred.astype(int)
     
     
-    pred = np.array(val_pred)
+    pred = np.array(torch.sigmoid(val_pred))
     pred[pred>.5] = 1
     pred[pred < .5] = 0
     pred_val = pred.astype(int)
@@ -333,16 +335,13 @@ def evaluate_auc(val_pred, val_true, test_pred, test_true):
     valid_auc = roc_auc_score(val_true, val_pred)
     test_auc = roc_auc_score(test_true, test_pred)
     print("VAL AUC:", str(valid_auc), "TEST AUC:", str(test_auc))
-    
-    
-    
+
     results = {}
     results['AUC'] = (valid_auc, test_auc)
     # results['Precision'] = (precision_val, precision_test)
     # results['Recall'] = (recall_val, recall_test)
     # results['AP'] = (ap_val, ap_test)
     # results['ACC'] = (acc_val, acc_test)
-
 
     return results
         
@@ -364,7 +363,7 @@ parser.add_argument('--ratio_per_hop', type=float, default=1.0)
 parser.add_argument('--max_nodes_per_hop', type=int, default=None)
 parser.add_argument('--node_label', type=str, default='drnl', 
                     help="which specific labeling trick to use")
-parser.add_argument('--use_feature', action='store_true', default=True,
+parser.add_argument('--use_feature', action='store_true', 
                     help="whether to use raw node features as GNN input")
 parser.add_argument('--use_edge_weight', action='store_true', 
                     help="whether to consider edge weight in GNN")
@@ -409,8 +408,9 @@ print(args)
 if args.save_appendix == '':
     args.save_appendix = '_' + time.strftime("%Y%m%d%H%M%S")
 if args.data_appendix == '':
-    args.data_appendix = '_h{}_{}_rph{}'.format(
+    f_name = '_h{}_{}_rph{}'.format(
         args.num_hops, args.node_label, ''.join(str(args.ratio_per_hop).split('.')))
+    args.data_appendix = f_name + args.dataset
     if args.max_nodes_per_hop is not None:
         args.data_appendix += '_mnph{}'.format(args.max_nodes_per_hop)
     if args.use_valedges_as_input:
@@ -490,7 +490,7 @@ elif args.dataset.startswith('LLGF'):
         split_edge['test']['edge_neg'] = data.test_neg_edge_index.t()
         return split_edge
 
-    path  = osp.join('datasets_LLGF/', args.dataset)
+    path  = osp.join('/localhome/pnaddaf/Desktop/parmis/SEAl_miror/datasets_LLGF', args.dataset)
     # read the data with same split of LLFG
     train_pos, val_pos,test_pos,val_neg,test_neg,x = datasetsSnapShot(path)
     #all edges in graph
@@ -541,9 +541,13 @@ elif args.eval_metric == 'mrr':
 elif args.eval_metric == 'auc':
     loggers = {
         'AUC': Logger(args.runs, args),
+        # 'Precision': Logger(args.runs, args),
+        # 'Recall': Logger(args.runs, args),
+        # 'AP': Logger(args.runs, args),
+        # 'ACC': Logger(args.runs, args),
     }
     
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 if args.use_heuristic:
     # Test link prediction heuristics.
@@ -810,9 +814,9 @@ print(f'Total number of parameters is {total_params}')
 print(f'Results are saved in {args.res_dir}')
 
 
-
 torch.save({
            'epoch': 50,
            'model_state_dict': model.state_dict(),
            'optimizer_state_dict': optimizer.state_dict()
            }, '/localhome/pnaddaf/Desktop/parmis/SEAl_miror/model.pth')
+
